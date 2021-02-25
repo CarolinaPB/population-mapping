@@ -5,9 +5,11 @@ pipeline = "mapping"
 
 include: "rules/create_file_log.smk"
 
-ASSEMBLY="/lustre/nobackup/WUR/ABGC/shared/public_data_store/genomes/chicken/Ensembl95/Gallus_gallus.GRCg6a.dna.toplevel.fa"
-MULTIPATH = "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F001_multipath/"
-OTHER_PATH = "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F004/raw_data/a297_Tu_14_1_H"
+workdir: config["OUTDIR"]
+
+ASSEMBLY = config["ASSEMBLY"]
+MULTIPATH = config["MULTIPATH"] 
+OTHER_PATH = config["OTHER_PATH"]
 
 
 FQ_TO_MAP_dict={}
@@ -47,11 +49,18 @@ elif len(otherpath_fq) <=2:
 ALL_SAMPLES_dict[samp_name_otherpath] = otherpath_fq
 
 
+# important variables :
+# - ALL_SAMPLES_dict - dictionary with sample IDs as keys and list with path to the fastq as value
+# - SINGLE_SAMPLES - list with name of samples that only have two fq files
+# - FQ_TO_MAP_dict - dictionary where samples that have two pairs of fq files are split into SAMPLE_1 and SAMPLE_2
+#                   keys are the sample ids (with _1 or _2 if they need to be run separately) and values are fq files
+
+localrules: create_file_log
 rule all:
     input:
         files_log,
         expand("processed_reads/{sample_merged}.sorted.bam.bai", sample_merged=ALL_SAMPLES_dict.keys()),
-
+        expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged=ALL_SAMPLES_dict.keys()),
 
 def create_input_names(wildcards):
     return(FQ_TO_MAP_dict[wildcards.sample])
@@ -73,10 +82,12 @@ rule bwa_map:
         temp("mapped_reads/{sample}.bam")
     message:
         "Rule {rule} processing"
+    params:
+        readgroup = lambda wildcards: wildcards.sample.split("_")[0]
     shell:
         """
         module load bwa
-        bwa mem -t 16 {input} | samblaster -r | samtools view -b - > {output}
+        bwa mem -t 16 -R "@RG\\tID:{params.readgroup}\\tSM:{params.readgroup}" {input} | samblaster -r | samtools view -b - > {output}
         """
 
 
@@ -84,7 +95,7 @@ rule merge_mapped:
     input:  
         create_names_to_merge
     output:
-        temp("merged_reads/{sample_merged}.bam")
+        "merged_reads/{sample_merged}.bam"
     message:
         "Rule {rule} processing"
     run:
@@ -102,6 +113,8 @@ rule samtools_sort:
         "processed_reads/{sample_merged}.sorted.bam"
     message:
         "Rule {rule} processing"
+    # group:
+    #     "end"
     shell: 
         "samtools sort -m 2G -@ 7 -O bam {input} > {output}"
 
@@ -113,10 +126,22 @@ rule samtools_index:
         "processed_reads/{sample_merged}.sorted.bam.bai"
     message:
         "Rule {rule} processing"
+    # group:
+    #     "end"
     shell:
         "samtools index -@ 16 {input}"
 
-  
-
-
-
+rule qualimap_report:
+    input: 
+        check=rules.samtools_index.output, 
+        bam=rules.samtools_sort.output
+    output: 
+        "mapping_stats/qualimap/{sample_merged}/genome_results.txt"
+    params:
+        outdir = "mapping_stats/qualimap/{sample_merged}/"
+    message:
+        "Rule {rule} processing"
+    resources:
+        time="2:0:0"
+    shell: 
+        "unset DISPLAY && qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}"
