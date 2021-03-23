@@ -8,81 +8,65 @@ include: "rules/create_file_log.smk"
 workdir: config["OUTDIR"]
 
 ASSEMBLY = config["ASSEMBLY"]
-MULTIPATH = config["MULTIPATH"] 
-OTHER_PATH = config["OTHER_PATH"]
 
+def define_to_map_together(given_path):
+    TO_MAP_TOGETHER = []
+    FULLPATHS=[]
+    SAMPLES=[]
+    for root, dirs, files in os.walk(given_path):
+        for name in files:
+            if name.endswith("fq.gz"):
+                fullpath = os.path.join(root, name)
 
-FQ_TO_MAP_dict={}
-ALL_SAMPLES_dict={}
-SINGLE_SAMPLES = []
+                sample = fullpath.rsplit("/", 2)[1]
+                name_sub = name.rsplit("_", 2)[0]
 
-def get_multipath_files(multipath, fqtomap, allsamples, singlesamples):
-    for multipath_dir in os.listdir(multipath):
-        if os.path.isdir(os.path.join(multipath , multipath_dir)):
-            for intermediate_dir in os.listdir(multipath + multipath_dir):
-                sample_dir = os.path.join(multipath, multipath_dir, intermediate_dir)
-                if os.path.isdir(sample_dir) and not sample_dir.endswith("report"):
-                    for sample in os.listdir(sample_dir):
-                        new_path = os.path.join(sample_dir,sample)
-                        if os.path.isdir(new_path):
-                            files_in_dir = [os.path.join(new_path,f) for f in os.listdir(new_path) if f.endswith('.fq.gz')]
-                            files_in_dir = sorted(files_in_dir)
-                            allsamples[sample] = files_in_dir
-                            if len(files_in_dir) >2:
-                                fqtomap[sample+"_1"] =  files_in_dir[0:2]
-                                fqtomap[sample+"_2"] =  files_in_dir[2:4]
-                            elif len(files_in_dir) <=2:
-                                fqtomap[sample] =  files_in_dir
-                                singlesamples.append(sample)
-    return(fqtomap, allsamples, singlesamples)
+                if name_sub not in TO_MAP_TOGETHER:
+                    TO_MAP_TOGETHER.append(name_sub)
+                FULLPATHS.append(fullpath)
+                if sample not in SAMPLES:
+                    SAMPLES.append(sample)
+    return(TO_MAP_TOGETHER, FULLPATHS, SAMPLES)
 
-FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES=get_multipath_files(MULTIPATH, FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES)
+MAP = {} # to be mapped together
+def create_bwa_map_input(given_path, map_dict):
+    maptogether, fullpaths, samples=define_to_map_together(given_path)
 
-### for reads in another directory
-samp_name_otherpath = OTHER_PATH.rsplit('/',1)[1]
-if samp_name_otherpath:
-    otherpath_fq = [os.path.join(OTHER_PATH,f) for f in os.listdir(OTHER_PATH) if f.endswith('.fq.gz')]
-    otherpath_fq = sorted(otherpath_fq)
-    if len(otherpath_fq) >2:
-        FQ_TO_MAP_dict[samp_name_otherpath+"_1"] =  otherpath_fq[0:2]
-        FQ_TO_MAP_dict[samp_name_otherpath+"_2"] =  otherpath_fq[2:4]
-    elif len(otherpath_fq) <=2:
-        FQ_TO_MAP_dict[samp_name_otherpath] =  otherpath_fq
-        SINGLE_SAMPLES.append(samp_name_otherpath)
+    for var in maptogether:
+        temp = []
+        for file in fullpaths:  
+            if var in file:
+                temp.append(file)
+        map_dict[var] = temp
+    return(map_dict, samples)
 
-    ALL_SAMPLES_dict[samp_name_otherpath] = otherpath_fq
-else: # if the OTHER_PATH is a multidir
-    FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES=get_multipath_files(OTHER_PATH, FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES)
+ALL_SAMPLES = []
+for file in config["PATHS_WITH_FILES"].values():
+    MAP, samples = create_bwa_map_input(file, MAP)
+    ALL_SAMPLES = ALL_SAMPLES + samples
 
-
-
-# print(ALL_SAMPLES_dict.keys())
-# print(FQ_TO_MAP_dict.keys())
-# important variables :
-# - ALL_SAMPLES_dict - dictionary with sample IDs as keys and list with path to the fastq as value
-# - SINGLE_SAMPLES - list with name of samples that only have two fq files
-# - FQ_TO_MAP_dict - dictionary where samples that have two pairs of fq files are split into SAMPLE_1 and SAMPLE_2
-#                   keys are the sample ids (with _1 or _2 if they need to be run separately) and values are fq files
 
 localrules: create_file_log
 rule all:
     input:
         files_log,
-        # expand("mapped_reads/{sample}.bam", sample=)
-        expand("processed_reads/{sample_merged}.sorted.bam.bai", sample_merged=ALL_SAMPLES_dict.keys()),
-        expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged=ALL_SAMPLES_dict.keys()),
+        # expand("mapped_reads/{sample}.bam", sample=MAP.keys()),
+        # expand("merged_reads/{sample_merged}.bam", sample_merged=ALL_SAMPLES),
+        expand("processed_reads/{sample_merged}.sorted.bam.bai", sample_merged=ALL_SAMPLES),
+        expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged=ALL_SAMPLES),
 
 def create_input_names(wildcards):
-    return(FQ_TO_MAP_dict[wildcards.sample])
+    return(MAP[wildcards.sample])
 
 def create_names_to_merge(wildcards):
     input_files = []
-    if wildcards.sample_merged in SINGLE_SAMPLES:
-        input_files.append("mapped_reads/"+wildcards.sample_merged+".bam")
-    else:
-        input_files.append("mapped_reads/"+wildcards.sample_merged+"_1.bam")
-        input_files.append("mapped_reads/"+wildcards.sample_merged+"_2.bam")
+    mapped_dir = expand("mapped_reads/{sample}.bam", sample=MAP.keys())
+    for file in mapped_dir:
+        file_nodir = file.rsplit("/")[1]
+        if file_nodir.startswith(wildcards.sample_merged):
+            input_files.append(file)
     return(input_files)
+
 
 rule bwa_map:
     input:
@@ -100,18 +84,16 @@ rule bwa_map:
         bwa mem -t 16 -R "@RG\\tID:{params.readgroup}\\tSM:{params.readgroup}" {input} | samblaster -r | samtools view -b - > {output}
         """
 
-
 rule merge_mapped:
     input:  
         create_names_to_merge
     output:
-        "merged_reads/{sample_merged}.bam"
+        temp("merged_reads/{sample_merged}.bam")
     message:
         "Rule {rule} processing"
     run:
         if len(input) >1:
-            if input[0].endswith("_1.bam") and input[1].endswith("_2.bam"):
-                shell("samtools merge -@ 16 {output} {input}")
+            shell("samtools merge -@ 16 {output} {input}")
         else:
             shell("mv {input} {output}")
 
@@ -151,7 +133,9 @@ rule qualimap_report:
         outdir = "mapping_stats/qualimap/{sample_merged}/"
     message:
         "Rule {rule} processing"
-    resources:
-        time="2:0:0"
+    # resources:
+    #     time="2:0:0"
+    group:
+        "end"
     shell: 
         "unset DISPLAY && qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}"
