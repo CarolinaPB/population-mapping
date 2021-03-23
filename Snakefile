@@ -16,39 +16,48 @@ FQ_TO_MAP_dict={}
 ALL_SAMPLES_dict={}
 SINGLE_SAMPLES = []
 
-for multipath_dir in os.listdir(MULTIPATH):
-    if os.path.isdir(os.path.join(MULTIPATH , multipath_dir)):
-        for intermediate_dir in os.listdir(MULTIPATH + multipath_dir):
-            sample_dir = os.path.join(MULTIPATH, multipath_dir, intermediate_dir)
-            if os.path.isdir(sample_dir) and not sample_dir.endswith("report"):
-                for sample in os.listdir(sample_dir):
-                    new_path = os.path.join(sample_dir,sample)
-                    if os.path.isdir(new_path):
-                        files_in_dir = [os.path.join(new_path,f) for f in os.listdir(new_path) if f.endswith('.fq.gz')]
-                        files_in_dir = sorted(files_in_dir)
-                        ALL_SAMPLES_dict[sample] = files_in_dir
-                        if len(files_in_dir) >2:
-                            FQ_TO_MAP_dict[sample+"_1"] =  files_in_dir[0:2]
-                            FQ_TO_MAP_dict[sample+"_2"] =  files_in_dir[2:4]
-                        elif len(files_in_dir) <=2:
-                            FQ_TO_MAP_dict[sample] =  files_in_dir
-                            SINGLE_SAMPLES.append(sample)
+def get_multipath_files(multipath, fqtomap, allsamples, singlesamples):
+    for multipath_dir in os.listdir(multipath):
+        if os.path.isdir(os.path.join(multipath , multipath_dir)):
+            for intermediate_dir in os.listdir(multipath + multipath_dir):
+                sample_dir = os.path.join(multipath, multipath_dir, intermediate_dir)
+                if os.path.isdir(sample_dir) and not sample_dir.endswith("report"):
+                    for sample in os.listdir(sample_dir):
+                        new_path = os.path.join(sample_dir,sample)
+                        if os.path.isdir(new_path):
+                            files_in_dir = [os.path.join(new_path,f) for f in os.listdir(new_path) if f.endswith('.fq.gz')]
+                            files_in_dir = sorted(files_in_dir)
+                            allsamples[sample] = files_in_dir
+                            if len(files_in_dir) >2:
+                                fqtomap[sample+"_1"] =  files_in_dir[0:2]
+                                fqtomap[sample+"_2"] =  files_in_dir[2:4]
+                            elif len(files_in_dir) <=2:
+                                fqtomap[sample] =  files_in_dir
+                                singlesamples.append(sample)
+    return(fqtomap, allsamples, singlesamples)
 
+FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES=get_multipath_files(MULTIPATH, FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES)
 
 ### for reads in another directory
 samp_name_otherpath = OTHER_PATH.rsplit('/',1)[1]
-otherpath_fq = [os.path.join(OTHER_PATH,f) for f in os.listdir(OTHER_PATH) if f.endswith('.fq.gz')]
-otherpath_fq = sorted(otherpath_fq)
-if len(otherpath_fq) >2:
-    FQ_TO_MAP_dict[samp_name_otherpath+"_1"] =  otherpath_fq[0:2]
-    FQ_TO_MAP_dict[samp_name_otherpath+"_2"] =  otherpath_fq[2:4]
-elif len(otherpath_fq) <=2:
-    FQ_TO_MAP_dict[samp_name_otherpath] =  otherpath_fq
-    SINGLE_SAMPLES.append(samp_name_otherpath)
+if samp_name_otherpath:
+    otherpath_fq = [os.path.join(OTHER_PATH,f) for f in os.listdir(OTHER_PATH) if f.endswith('.fq.gz')]
+    otherpath_fq = sorted(otherpath_fq)
+    if len(otherpath_fq) >2:
+        FQ_TO_MAP_dict[samp_name_otherpath+"_1"] =  otherpath_fq[0:2]
+        FQ_TO_MAP_dict[samp_name_otherpath+"_2"] =  otherpath_fq[2:4]
+    elif len(otherpath_fq) <=2:
+        FQ_TO_MAP_dict[samp_name_otherpath] =  otherpath_fq
+        SINGLE_SAMPLES.append(samp_name_otherpath)
 
-ALL_SAMPLES_dict[samp_name_otherpath] = otherpath_fq
+    ALL_SAMPLES_dict[samp_name_otherpath] = otherpath_fq
+else: # if the OTHER_PATH is a multidir
+    FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES=get_multipath_files(OTHER_PATH, FQ_TO_MAP_dict,ALL_SAMPLES_dict,SINGLE_SAMPLES)
 
 
+
+# print(ALL_SAMPLES_dict.keys())
+# print(FQ_TO_MAP_dict.keys())
 # important variables :
 # - ALL_SAMPLES_dict - dictionary with sample IDs as keys and list with path to the fastq as value
 # - SINGLE_SAMPLES - list with name of samples that only have two fq files
@@ -59,6 +68,7 @@ localrules: create_file_log
 rule all:
     input:
         files_log,
+        # expand("mapped_reads/{sample}.bam", sample=)
         expand("processed_reads/{sample_merged}.sorted.bam.bai", sample_merged=ALL_SAMPLES_dict.keys()),
         expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged=ALL_SAMPLES_dict.keys()),
 
@@ -113,8 +123,8 @@ rule samtools_sort:
         "processed_reads/{sample_merged}.sorted.bam"
     message:
         "Rule {rule} processing"
-    # group:
-    #     "end"
+    group:
+        "end"
     shell: 
         "samtools sort -m 2G -@ 7 -O bam {input} > {output}"
 
@@ -126,8 +136,8 @@ rule samtools_index:
         "processed_reads/{sample_merged}.sorted.bam.bai"
     message:
         "Rule {rule} processing"
-    # group:
-    #     "end"
+    group:
+        "end"
     shell:
         "samtools index -@ 16 {input}"
 
