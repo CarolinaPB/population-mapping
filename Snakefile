@@ -78,6 +78,8 @@ rule bwa_map:
         "Rule {rule} processing"
     params:
         readgroup = lambda wildcards: wildcards.sample.split("_")[0]
+    group:
+        'group'
     shell:
         """
         module load bwa
@@ -91,6 +93,8 @@ rule merge_mapped:
         temp("merged_reads/{sample_merged}.bam")
     message:
         "Rule {rule} processing"
+    group:
+        'group'
     run:
         if len(input) >1:
             shell("samtools merge -@ 16 {output} {input}")
@@ -106,7 +110,7 @@ rule samtools_sort:
     message:
         "Rule {rule} processing"
     group:
-        "end"
+        'group'
     shell: 
         "samtools sort -m 2G -@ 7 -O bam {input} > {output}"
 
@@ -119,7 +123,7 @@ rule samtools_index:
     message:
         "Rule {rule} processing"
     group:
-        "end"
+        "group"
     shell:
         "samtools index -@ 16 {input}"
 
@@ -136,6 +140,6 @@ rule qualimap_report:
     # resources:
     #     time="2:0:0"
     group:
-        "end"
+        "group"
     shell: 
         "unset DISPLAY && qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}"
