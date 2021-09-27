@@ -1,1 +1,23 @@
-my_prefix: DTG-SG-188
+# # 03/02/2021
+# ASSEMBLY: "/lustre/nobackup/WUR/ABGC/shared/public_data_store/genomes/chicken/Ensembl95/Gallus_gallus.GRCg6a.dna.toplevel.fa"
+# MULTIPATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F001_multipath/"
+# OTHER_PATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F004/raw_data/a297_Tu_14_1_H"
+
+# # 10/02/2021
+# ASSEMBLY: "/lustre/nobackup/WUR/ABGC/shared/public_data_store/genomes/chicken/Ensembl95/Gallus_gallus.GRCg6a.dna.toplevel.fa"
+# MULTIPATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F001_multipath/"
+# OTHER_PATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F004/raw_data/a297_Tu_14_1_H"
+# OUTDIR: /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/mapping_results
+
+# 23/03/2021 New samples
+# ASSEMBLY: "/lustre/nobackup/WUR/ABGC/shared/public_data_store/genomes/chicken/Ensembl95/Gallus_gallus.GRCg6a.dna.toplevel.fa"
+# MULTIPATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F006_multipath/"
+# OTHER_PATH: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F005_zip/"
+# OUTDIR: /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/mapping_results
+
+# 23/03/2021 New samples
+ASSEMBLY: "/lustre/nobackup/WUR/ABGC/shared/public_data_store/genomes/chicken/Ensembl95/Gallus_gallus.GRCg6a.dna.toplevel.fa"
+OUTDIR: /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/mapping_results
+PATHS_WITH_FILES:
+  file1: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F006_multipath/"
+  # file2: "/lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F005_zip/"
