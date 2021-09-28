@@ -137,8 +137,6 @@ rule qualimap_report:
         outdir = "mapping_stats/qualimap/{sample_merged}/"
     message:
         "Rule {rule} processing"
-    # resources:
-    #     time="2:0:0"
     group:
         "group"
     shell: 
