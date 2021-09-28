@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Population mapping to reference genome
+title: Population mapping
 group: navigation
 ---
 
