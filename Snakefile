@@ -1,11 +1,16 @@
 configfile: "config.yaml"
 import os
+from snakemake.utils import makedirs
 
 pipeline = "mapping" 
 
 include: "rules/create_file_log.smk"
 
-workdir: config["OUTDIR"]
+if "OUTDIR" in config:
+    print("\nSaving to " + config["OUTDIR"] + "\n")
+    workdir: config["OUTDIR"]
+
+makedirs("logs_slurm")
 
 ASSEMBLY = config["ASSEMBLY"]
 
@@ -50,10 +55,8 @@ localrules: create_file_log
 rule all:
     input:
         files_log,
-        # expand("mapped_reads/{sample}.bam", sample=MAP.keys()),
-        # expand("merged_reads/{sample_merged}.bam", sample_merged=ALL_SAMPLES),
-        expand("processed_reads/{sample_merged}.sorted.bam.bai", sample_merged=ALL_SAMPLES),
         expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged=ALL_SAMPLES),
+        "mapping_stats/sample_quality_summary.tsv"
 
 def create_input_names(wildcards):
     return(MAP[wildcards.sample])
@@ -141,3 +144,17 @@ rule qualimap_report:
         "group"
     shell: 
         "unset DISPLAY && qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}"
+
+rule qualimap_summary:
+    input:
+        expand("mapping_stats/qualimap/{sample_merged}/genome_results.txt", sample_merged = ALL_SAMPLES)
+    output:
+        "mapping_stats/sample_quality_summary.tsv"
+    message:
+        'Rule {rule} processing'
+    group:
+        "group"
+    params:
+        scripts_dir = os.path.join(workflow.basedir, "scripts/")
+    shell:
+        'sh {params.scripts_dir}create_qualimap_summary.sh'
