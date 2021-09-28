@@ -27,10 +27,10 @@ PATHS_WITH_FILES:
 
 - ASSEMBLY - path to the assembly file
 - OUTDIR - directory where snakemake will run and where the results will be written to
-- PATHS_WITH_FILES - directory that can contain subdirectories where the **fq.gz** reads are located. You can add several paths by adding ```path2: /path/to/dir``` under ```PATHS_WITH_FILES```. (The line you add has have indentation)
+- PATHS_WITH_FILES - directory that can contain subdirectories where the **fq.gz** reads are located. You can add several paths by adding ```path2: /path/to/dir``` under ```PATHS_WITH_FILES```. (The line you add has to have indentation)
 
-The script goes through the subdirectories of the directory you choose under ```PATHS_WITH_FILES``` looking for files with **fq.gz** extension.
-path1 could be something like:
+The script goes through the subdirectories of the directory you choose under ```PATHS_WITH_FILES``` looking for files with **fq.gz** extension.  
+Example: if ```path1: /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F006_multipath```, the subdirectory structure could be:  
 
 /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC20031230-Z01-F006_multipath  
 ├── X201SC20031230-Z01-F006_1  
@@ -57,7 +57,7 @@ path1 could be something like:
 If you want the results to be written to this directory (not to a new directory), comment out ```OUTDIR: /path/to/outdir```
 
 ## RESULTS
-- dated file with an overview of the files used to run the pipeline (for documentation purposes)
+- **<run_date>_files.txt** dated file with an overview of the files used to run the pipeline (for documentation purposes)
 - **processed_reads** directory with the bam files with the mapped reads for every sample
 - **mapping_stats** directory containing the qualimap results and a summary of the qualimap results for all samples in ```sample_quality_summary.tsv```
   - **qualimap** contains qualimap results per sample
