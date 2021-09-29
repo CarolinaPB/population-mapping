@@ -2,6 +2,12 @@ configfile: "config.yaml"
 import os
 from snakemake.utils import makedirs
 
+#################################
+# author: Carolina Pita Barros  #
+# carolina.pitabarros@wur.nl    #
+# date: March 2021              #
+#################################
+
 pipeline = "population-mapping" 
 
 include: "rules/create_file_log.smk"
