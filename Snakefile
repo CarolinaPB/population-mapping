@@ -70,23 +70,23 @@ def create_names_to_merge(wildcards):
             input_files.append(file)
     return(input_files)
 
-
 rule bwa_map:
     input:
-        ASSEMBLY,
-        create_input_names
+        assembly = ASSEMBLY,
+        reads = create_input_names
     output:
         temp("mapped_reads/{sample}.bam")
     message:
         "Rule {rule} processing"
-    params:
-        readgroup = lambda wildcards: wildcards.sample.split("_")[0]
     group:
         'group'
     shell:
         """
-        module load bwa
-        bwa mem -t 16 -R "@RG\\tID:{params.readgroup}\\tSM:{params.readgroup}" {input} | samblaster -r | samtools view -b - > {output}
+module load bwa samtools
+
+rg="$(basename $(dirname "{input.reads[0]}"))"
+echo $rg
+bwa mem -t 16 -R "@RG\\tID:$rg\\tSM:$rg" {input} | samblaster -r | samtools view -b - > {output}
         """
 
 rule merge_mapped:
@@ -100,7 +100,7 @@ rule merge_mapped:
         'group'
     run:
         if len(input) >1:
-            shell("samtools merge -@ 16 {output} {input}")
+            shell("module load samtools && samtools merge -@ 16 {output} {input}")
         else:
             shell("mv {input} {output}")
 
@@ -115,7 +115,7 @@ rule samtools_sort:
     group:
         'group'
     shell: 
-        "samtools sort -m 2G -@ 7 -O bam {input} > {output}"
+        "module load samtools && samtools sort -m 2G -@ 7 -O bam {input} > {output}"
 
 
 rule samtools_index:
@@ -128,7 +128,7 @@ rule samtools_index:
     group:
         "group"
     shell:
-        "samtools index -@ 16 {input}"
+        "module load samtools && samtools index -@ 16 {input}"
 
 rule qualimap_report:
     input: 
