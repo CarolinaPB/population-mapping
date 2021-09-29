@@ -67,7 +67,7 @@ Example: if ```path1: /lustre/nobackup/WUR/ABGC/shared/Chicken/Africa/X201SC2003
 
 
 ## RESULTS
-- **<run_date>_files.txt** dated file with an overview of the files used to run the pipeline (for documentation purposes)
+- **<run_date>\_files.txt** dated file with an overview of the files used to run the pipeline (for documentation purposes)
 - **processed_reads** directory with the bam files with the mapped reads for every sample
 - **mapping_stats** directory containing the qualimap results and a summary of the qualimap results for all samples in ```sample_quality_summary.tsv```
   - **qualimap** contains qualimap results per sample
