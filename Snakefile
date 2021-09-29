@@ -2,7 +2,7 @@ configfile: "config.yaml"
 import os
 from snakemake.utils import makedirs
 
-pipeline = "mapping" 
+pipeline = "population-mapping" 
 
 include: "rules/create_file_log.smk"
 
