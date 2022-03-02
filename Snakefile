@@ -76,24 +76,37 @@ def create_names_to_merge(wildcards):
             input_files.append(file)
     return(input_files)
 
+rule bwa_index:
+    input: 
+        ASSEMBLY
+    output:
+        multiext(ASSEMBLY, ".amb", ".ann", ".bwt.2bit.64", ".pac", ".0123")
+    group:
+        "group"
+    shell:
+        "bwa-mem2 index {input}"
+
 rule bwa_map:
     input:
         assembly = ASSEMBLY,
-        reads = create_input_names
+        idx = rules.bwa_index.output,
+        reads=create_input_names,
     output:
         temp("mapped_reads/{sample}.bam")
+    resources: 
+        cpus=16
+    group:
+        "group_all"
     message:
         "Rule {rule} processing"
-    group:
-        'group'
     shell:
         """
-module load bwa samtools
-
+module load samtools 
 rg="$(basename $(dirname "{input.reads[0]}"))"
 echo $rg
-bwa mem -t 16 -R "@RG\\tID:$rg\\tSM:$rg" {input} | samblaster -r | samtools view -b - > {output}
+bwa-mem2 mem -t {resources.cpus} -R "@RG\\tID:$rg\\tSM:$rg" {input.assembly} {input.reads} | samblaster -r | samtools view -b - > {output}
         """
+
 
 rule merge_mapped:
     input:  
@@ -121,7 +134,10 @@ rule samtools_sort:
     group:
         'group'
     shell: 
-        "module load samtools && samtools sort -m 2G -@ 7 -O bam {input} > {output}"
+        """
+module load samtools
+samtools sort -m 2G -@ 7 -O bam {input} > {output}
+        """
 
 
 rule samtools_index:
@@ -134,7 +150,10 @@ rule samtools_index:
     group:
         "group"
     shell:
-        "module load samtools && samtools index -@ 16 {input}"
+        """
+module load samtools
+samtools index -@ 16 {input}
+        """
 
 rule qualimap_report:
     input: 
@@ -149,7 +168,10 @@ rule qualimap_report:
     group:
         "group"
     shell: 
-        "unset DISPLAY && qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}"
+        """
+unset DISPLAY 
+qualimap bamqc -bam {input.bam} --java-mem-size=16G -nt 8 -outformat PDF -outdir {params.outdir}
+        """
 
 rule qualimap_summary:
     input:
