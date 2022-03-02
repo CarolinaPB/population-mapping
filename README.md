@@ -8,9 +8,11 @@ Click [here](https://github.com/CarolinaPB/snakemake-template/blob/master/Short%
 This is a pipeline to map short reads from several individuals to a reference assembly. It outputs the mapped reads and a qualimap report.
 
 #### Tools used:
-- Bwa - mapping
-- Samtools - processing
-- Qualimap - mapping summary
+
+- [Bwa-mem2](https://github.com/bwa-mem2/bwa-mem2) - mapping
+- [Samtools](http://www.htslib.org/) - processing
+- [Samblaster](https://github.com/GregoryFaust/samblaster) - marking duplicates
+- [Qualimap](http://qualimap.conesalab.org/) - mapping summary
 
 | ![DAG](https://github.com/CarolinaPB/population-mapping/blob/wur/workflow.png) |
 |:--:|
