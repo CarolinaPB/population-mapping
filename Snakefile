@@ -81,8 +81,6 @@ rule bwa_index:
         ASSEMBLY
     output:
         multiext(ASSEMBLY, ".amb", ".ann", ".bwt.2bit.64", ".pac", ".0123")
-    group:
-        "group"
     shell:
         "bwa-mem2 index {input}"
 
